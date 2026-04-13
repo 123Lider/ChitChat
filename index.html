@@ -2016,7 +2016,13 @@
 .tt-feed-container { height: 100%; width: 100%; overflow-y: scroll; scroll-snap-type: y mandatory; background: #000; scrollbar-width: none; }
 .tt-feed-container::-webkit-scrollbar { display: none; }
 .tt-video-item { height: 100%; width: 100%; scroll-snap-align: start; position: relative; background: #000; display: flex; justify-content: center; align-items: center; }
-.tt-video-player { width: 100%; height: 100%; object-fit: cover; }
+/* ভিডিও যাতে স্ক্রিনে পুরোটা ফিট হয় এবং সাইড কেটে না যায় */
+.tt-video-player {
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* আগে cover ছিল, এখন contain দেওয়া হলো */
+    background: #000;    /* ভিডিওর সাইজ ছোট হলে ব্যাকগ্রাউন্ড কালো থাকবে */
+}
 
 /* RIGHT SIDEBAR */
 .tt-right-sidebar { position: absolute; bottom: 80px; right: 10px; display: flex; flex-direction: column; gap: 20px; align-items: center; z-index: 60; }
@@ -2069,9 +2075,31 @@
 .tt-stats { display: flex; justify-content: center; gap: 30px; margin-bottom: 15px; }
 .tt-stat-val { font-weight: bold; font-size: 17px; display: block; }
 .tt-stat-lbl { font-size: 12px; color: #777; }
-.tt-profile-actions { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+.tt-profile-actions { 
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    gap: 8px; /* বাটনের মাঝখানে ফাঁকা */
+    margin-bottom: 20px; 
+    width: 100%;
+}
 .tt-btn-edit { border: 1px solid #ddd; background: white; padding: 8px 25px; font-weight: 600; border-radius: 4px; font-size: 14px; }
-.tt-btn-follow { background: #ea4359; color: white; border: none; padding: 8px 30px; border-radius: 4px; font-weight: 600; }
+.tt-btn-follow { 
+    background: #ea4359; /* টিকটক রেড কালার */
+    color: white; 
+    border: none; 
+    padding: 8px 32px; /* ডানে বামে প্যাডিং */
+    border-radius: 4px; 
+    font-weight: 600; 
+    font-size: 15px;
+    cursor: pointer;
+    min-width: 140px; /* একটা ফিক্সড সাইজ */
+    width: auto; /* ফুল উইডথ হবে না */
+    transition: background 0.2s;
+}
+.tt-btn-follow:active {
+    background: #d63b4f;
+}
 
 /* TABS & GRID */
 .tt-profile-tabs { display: flex; justify-content: space-around; border-bottom: 1px solid #eee; margin-top: 10px; }
@@ -2118,11 +2146,13 @@
     border: 1px solid #ddd; 
     background: white; 
     color: black;
-    padding: 10px 40px; /* বাটন বড় করা হলো */
+    padding: 8px 24px; 
     font-weight: 600; 
     border-radius: 4px; 
     font-size: 15px; 
     cursor: pointer;
+    min-width: 120px;
+    width: auto;
 }
 
 .tt-btn-follow { 
@@ -3873,20 +3903,36 @@
         let selectedCountrySignup = { name: 'Bangladesh', code: '+880', flag: 'bd' };
         let currentLanguage = 'bn'; 
 
-        // ---------------------------------------------------
-        // ✅ FIREBASE CONFIGURATION & INITIALIZATION
-        // ---------------------------------------------------
-        
-        const firebaseConfig = {
-          apiKey: "AIzaSyC0lQjCDNF3LjdhOt8x2SPZCPAFf9nD1bQ",
-          authDomain: "calle1-c3051.firebaseapp.com",
-          databaseURL: "https://calle1-c3051-default-rtdb.firebaseio.com/",
-          projectId: "calle1-c3051",
-          storageBucket: "calle1-c3051.firebasestorage.app",
-          messagingSenderId: "205173738860",
-          appId: "1:205173738860:web:65089010205a0702c47749",
-          measurementId: "G-M7LYHE6K1Z"
-        };
+// firebase-messaging-sw.js
+importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-compat.js');
+
+// আপনার কনফিগারেশন হুবহু বসান
+firebase.initializeApp({
+  apiKey: "AIzaSyC0lQjCDNF3LjdhOt8x2SPZCPAFf9nD1bQ",
+  authDomain: "calle1-c3051.firebaseapp.com",
+  databaseURL: "https://calle1-c3051-default-rtdb.firebaseio.com/",
+  projectId: "calle1-c3051",
+  storageBucket: "calle1-c3051.firebasestorage.app",
+  messagingSenderId: "205173738860",
+  appId: "1:205173738860:web:65089010205a0702c47749",
+  measurementId: "G-M7LYHE6K1Z"
+});
+
+const messaging = firebase.messaging();
+
+// ব্যাকগ্রাউন্ড মেসেজ হ্যান্ডলার
+messaging.onBackgroundMessage((payload) => {
+  console.log('[firebase-messaging-sw.js] Received background message ', payload);
+  
+  const notificationTitle = payload.notification.title;
+  const notificationOptions = {
+    body: payload.notification.body,
+    icon: payload.notification.icon || "https://cdn-icons-png.flaticon.com/512/1041/1041916.png"
+  };
+
+  self.registration.showNotification(notificationTitle, notificationOptions);
+});
 
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
@@ -3918,6 +3964,8 @@
     }
 });
 
+		// আপনার কোডের শুরুতে যেখানে ভেরিয়েবলটি আছে:
+		const LEGACY_SERVER_KEY = "এখানে_আপনার_FIREBASE_SERVER_KEY_পেস্ট_করুন";
         const vapidKey = "BAPBeH0ZjiA8k8cZWAmnILB-Wc2xbImQzluPDl-3vxofiWnnavFUoka1SuAilECAf_0pFzbJ8Eg5dCi7xFF59bY"; 
         const ADMIN_UID = 'OLADMIN999';
 
@@ -4053,6 +4101,75 @@
                     cancelFaceScan();
                 });
         }
+
+// ==========================================
+// 🔥 NOTIFICATION SYSTEM UPDATED CODE
+// ==========================================
+
+function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        console.log("This browser does not support desktop notification");
+        return;
+    }
+
+    Notification.requestPermission().then((permission) => {
+        if (permission === "granted") {
+            console.log("Notification permission granted!");
+            // টোকেন সেভ করার জন্য
+            getToken(); 
+        } else {
+            console.log("Notification permission denied.");
+        }
+    });
+}
+
+// এই ফাংশনটি FCM টোকেন নিবে এবং ডাটাবেসে সেভ করবে
+function getToken() {
+    messaging.getToken({ vapidKey: "BAPBeH0ZjiA8k8cZWAmnILB-Wc2xbImQzluPDl-3vxofiWnnavFUoka1SuAilECAf_0pFzbJ8Eg5dCi7xFF59bY" })
+    .then((currentToken) => {
+        if (currentToken) {
+            console.log("FCM Token:", currentToken);
+            saveTokenToDatabase(currentToken);
+        } else {
+            console.log('No registration token available. Request permission to generate one.');
+        }
+    }).catch((err) => {
+        console.log('An error occurred while retrieving token. ', err);
+    });
+}
+
+// এই ফাংশনটি নোটিফিকেশন দেখাবে
+function showSystemNotification(title, body, icon) {
+    // ১. যদি অ্যান্ড্রয়েড অ্যাপ (WebView) হয়
+    if (typeof AndroidInterface !== 'undefined' && AndroidInterface.showNotification) {
+        AndroidInterface.showNotification(title, body);
+    } 
+    // ২. যদি সাধারণ ব্রাউজার হয় (Chrome/Firefox mobile)
+    else if (Notification.permission === "granted") {
+        const options = {
+            body: body,
+            icon: icon || "https://cdn-icons-png.flaticon.com/512/1041/1041916.png",
+            vibrate: [200, 100, 200]
+        };
+        new Notification(title, options);
+    }
+}
+
+// মেসেজ রিসিভ করার লিসেনার আপডেট করুন
+messaging.onMessage((payload) => {
+    console.log('Message received. ', payload);
+    const { title, body, icon } = payload.notification || {};
+    
+    // ফোরগ্রাউন্ডে নোটিফিকেশন দেখান
+    showSystemNotification(title, body, icon);
+    
+    // সাউন্ড প্লে করা
+    if (payload.data && payload.data.type === 'call') {
+        playRingtone();
+    } else {
+        playMsgSound();
+    }
+});
 
         function isEnvironmentDark(videoElement) {
             const canvas = document.createElement('canvas');
@@ -4270,17 +4387,6 @@
             });
         }
 
-        function requestNotificationPermission() {
-    // অ্যান্ড্রয়েড অ্যাপে সরাসরি Notification অবজেক্ট কাজ করে না, তাই এই চেকটি জরুরি
-    if (typeof Notification !== 'undefined') {
-        Notification.requestPermission().then((permission) => {
-            // ... কোড ...
-        });
-    } else {
-        console.log("Notification API not supported in this environment.");
-    }
-}
-
         function saveTokenToDatabase(token) {
             if (!currentUser) return;
             database.ref('users/' + currentUser.uid).update({ fcmToken: token });
@@ -4297,17 +4403,6 @@
             }
         });
         
-        function showSystemNotification(title, body) {
-    // ১. অ্যান্ড্রয়েড অ্যাপের স্ট্যাটাস বারে আসল নোটিফিকেশন পাঠানোর জন্য
-    // আমাদের জাভা ফাইলে নাম দিয়েছিলাম 'AndroidInterface', তাই এখানেও সেটিই ব্যবহার করছি
-    if (window.AndroidInterface && window.AndroidInterface.showNotification) {
-        window.AndroidInterface.showNotification(title, body);
-    } 
-    // ২. ব্রাউজার নোটিফিকেশন (Notification API) অংশটি ফেলে দিয়েছি যাতে 'Not defined' এরর না আসে
-    else {
-        console.log("System Notification: " + title + " - " + body);
-    }
-}
 
         // Check User Auth & Offline Support
         function checkUserAuthStatus() {
@@ -5192,43 +5287,52 @@ async function startFastUpload() {
             refreshFriendsData(); 
         }
         
-        function refreshFriendsData() {
-            database.ref('privateContacts/' + currentUser.uid).once('value', pcSnapshot => {
-                privateContactUids.clear();
-                pcSnapshot.forEach(child => privateContactUids.add(child.key));
+        // এই ফাংশনটি দিয়ে আগের refreshFriendsData রিপ্লেস করুন
+function refreshFriendsData() {
+    // প্রাইভেট কন্টাক্ট এবং ব্লক লিস্ট চেক করা
+    database.ref('privateContacts/' + currentUser.uid).once('value', pcSnapshot => {
+        privateContactUids.clear();
+        pcSnapshot.forEach(child => privateContactUids.add(child.key));
+    
+        database.ref('blockedUsers/' + currentUser.uid).once('value', blockedSnapshot => {
+            const blockedUids = new Set();
+            blockedSnapshot.forEach(child => blockedUids.add(child.key));
             
-                database.ref('blockedUsers/' + currentUser.uid).once('value', blockedSnapshot => {
-                    const blockedUids = new Set();
-                    blockedSnapshot.forEach(child => blockedUids.add(child.key));
-                    
-                    database.ref('friends/' + currentUser.uid).orderByChild('lastActivity').on('value', snapshot => {
-                        const sortedFriendUids = [];
-                        
-                        snapshot.forEach(child => {
-                            sortedFriendUids.unshift(child.key); 
-                        });
+            // lastActivity অনুযায়ী সর্ট করে ডাটা আনা
+            database.ref('friends/' + currentUser.uid).orderByChild('lastActivity').on('value', snapshot => {
+                const sortedFriendUids = [];
+                
+                // Firebase ডাটা Ascending (পুরাতন আগে) দেয়, তাই আমরা উল্টে নিবো
+                // unshift ব্যবহার করলে নতুনটা সবার উপরে আসবে
+                snapshot.forEach(child => {
+                    sortedFriendUids.unshift(child.key); 
+                });
 
-                        if (!sortedFriendUids.includes(ADMIN_UID)) {
-                            sortedFriendUids.push(ADMIN_UID); 
-                        }
-                        
-                        const promises = sortedFriendUids.map(uid => {
-                            if (!blockedUids.has(uid) && !privateContactUids.has(uid)) { 
-                                return database.ref('users/'+uid).once('value').then(s => s.val());
-                            }
-                            return null;
-                        });
+                // এডমিন সবসময় থাকবে
+                if (!sortedFriendUids.includes(ADMIN_UID)) {
+                    sortedFriendUids.push(ADMIN_UID); 
+                }
+                
+                // ইউজার ডাটা লোড করা
+                const promises = sortedFriendUids.map(uid => {
+                    if (!blockedUids.has(uid) && !privateContactUids.has(uid)) { 
+                        return database.ref('users/'+uid).once('value').then(s => s.val());
+                    }
+                    return null;
+                });
 
-                        Promise.all(promises).then(usersData => {
-                            const validUsers = usersData.filter(u => u !== null);
-                            localStorage.setItem('cachedFriendsList', JSON.stringify(validUsers));
-                            renderFriendList(validUsers); 
-                            loadAndRenderStories(validUsers.filter(u => u.uid !== ADMIN_UID));
-                        });
-                    });
-                }); 
-            }); 
-        }
+                Promise.all(promises).then(usersData => {
+                    const validUsers = usersData.filter(u => u !== null);
+                    // লোকাল স্টোরেজে সেভ এবং রেন্ডার
+                    localStorage.setItem('cachedFriendsList', JSON.stringify(validUsers));
+                    renderFriendList(validUsers); 
+                    // স্টোরিও লোড করা
+                    loadAndRenderStories(validUsers.filter(u => u.uid !== ADMIN_UID));
+                });
+            });
+        }); 
+    }); 
+}
 
         function renderFriendList(users) {
             const list = document.getElementById('userList');
@@ -5646,19 +5750,33 @@ async function startFastUpload() {
         }
 
         function toggleAuthForm() {
-            const loginForm = document.getElementById('loginForm');
-            const signupForm = document.getElementById('signupForm');
-            const authToggleText = document.getElementById('authToggleText');
-            if (loginForm.style.display === 'none') {
-                loginForm.style.display = 'block';
-                signupForm.style.display = 'none';
-                authToggleText.textContent = translations[currentLanguage].create_account_text; 
-            } else {
-                loginForm.style.display = 'none';
-                signupForm.style.display = 'block';
-                authToggleText.textContent = translations[currentLanguage].login; 
-            }
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const authToggleText = document.getElementById('authToggleText');
+    
+    // চেক করা হচ্ছে বর্তমানে কোন ফর্মটি দেখাচ্ছে
+    if (loginForm.style.display === 'none') {
+        // লগইন ফর্ম দেখাও
+        loginForm.style.display = 'block';
+        signupForm.style.display = 'none';
+        // নিচের টেক্সট পরিবর্তন করো
+        if(translations && currentLanguage) {
+            authToggleText.textContent = translations[currentLanguage].create_account_text;
+        } else {
+            authToggleText.textContent = "Create New Account";
         }
+    } else {
+        // সাইনআপ ফর্ম দেখাও
+        loginForm.style.display = 'none';
+        signupForm.style.display = 'block';
+        // নিচের টেক্সট পরিবর্তন করো
+        if(translations && currentLanguage) {
+            authToggleText.textContent = translations[currentLanguage].login;
+        } else {
+            authToggleText.textContent = "Login";
+        }
+    }
+}
 
         function login() { 
             const number = document.getElementById('loginNumber').value.trim();
@@ -6507,7 +6625,23 @@ async function startFastUpload() {
             }
             dbRef.push(messageData);
         }
-
+// এই ফাংশনটি মেসেজ পাঠানোর সময় কল হবে
+function updateLastActivity() {
+    if (!currentChatUser || currentChatType === 'group') return;
+    
+    const timestamp = firebase.database.ServerValue.TIMESTAMP;
+    const updates = {};
+    
+    // ১. আমার লিস্টে ওই ফ্রেন্ডের টাইম আপডেট
+    updates[`friends/${currentUser.uid}/${currentChatUser.uid}/lastActivity`] = timestamp;
+    
+    // ২. ওই ফ্রেন্ডের লিস্টে আমার টাইম আপডেট (যদি এডমিন না হয়)
+    if (currentChatUser.uid !== ADMIN_UID) {
+        updates[`friends/${currentChatUser.uid}/${currentUser.uid}/lastActivity`] = timestamp;
+    }
+    
+    database.ref().update(updates);
+}
         function sendPushNotification(targetToken, title, body, type) {
             if (LEGACY_SERVER_KEY === "আপনার_LEGACY_KEY_এখানে_দিন" || !targetToken) {
                 return;
@@ -6643,93 +6777,116 @@ async function startFastUpload() {
             });
         }
 
-        function loadMessages() {
-            const messagesContainer = document.getElementById('chatMessages');
+        // ✅ আপডেটেড মেসেজ লোডিং এবং স্মার্ট স্ক্রল ফাংশন
+function loadMessages() {
+    const messagesContainer = document.getElementById('chatMessages');
+    
+    messageDataMap.clear();
+    currentChatMessages = []; 
+
+    let roomId = null;
+    let storageKey = null;
+
+    // রুম আইডি সেটআপ
+    if (currentChatType === 'group') {
+        roomId = currentChatGroup.id;
+        storageKey = `cachedChat_group_${roomId}`;
+        chatRef = database.ref(`group_messages/${roomId}`);
+    } else if (currentChatUser.uid === ADMIN_UID) {
+        roomId = `admin_${currentUser.uid}`;
+        storageKey = `cachedChat_admin`;
+        chatRef = database.ref(`adminChat/${currentUser.uid}`);
+    } else {
+        if (!currentChatUser) return;
+        roomId = getRoomId(currentUser.uid, currentChatUser.uid);
+        storageKey = `cachedChat_${roomId}`;
+        chatRef = database.ref(`messages/${roomId}`);
+    }
+
+    // ক্যাশ ক্লিয়ার করে ফ্রেশ লোড করা (যাতে ডুপ্লিকেট না হয়)
+    messagesContainer.innerHTML = ''; 
+    
+    // স্মার্ট স্ক্রল ভেরিয়েবল
+    let firstUnreadMessageId = null;
+    let hasUnreadMessages = false;
+
+    if (chatRef) chatRef.off();
+
+    // মেসেজ আসা শুরু
+    chatRef.limitToLast(50).on('child_added', (snapshot) => {
+        const msg = snapshot.val();
+        const msgKey = snapshot.key;
+        
+        // ডিলিট হওয়া মেসেজ বাদ
+        if(msg.deletedFor && msg.deletedFor[currentUser.uid]) return; 
+
+        // মেসেজ রেন্ডার করা
+        const existingEl = document.getElementById(`msg-${msgKey}`);
+        if (!existingEl) {
+            renderMessage(msg, msgKey);
             
-            messageDataMap.clear();
-            currentChatMessages = []; 
-
-            let roomId = null;
-            let storageKey = null;
-
-            if (currentChatType === 'group') {
-                roomId = currentChatGroup.id;
-                storageKey = `cachedChat_group_${roomId}`;
-                chatRef = database.ref(`group_messages/${roomId}`);
-            } else if (currentChatUser.uid === ADMIN_UID) {
-                roomId = `admin_${currentUser.uid}`;
-                storageKey = `cachedChat_admin`;
-                chatRef = database.ref(`adminChat/${currentUser.uid}`);
-            } else {
-                if (!currentChatUser) return;
-                roomId = getRoomId(currentUser.uid, currentChatUser.uid);
-                storageKey = `cachedChat_${roomId}`;
-                chatRef = database.ref(`messages/${roomId}`);
+            // সাউন্ড প্লে (অন্যের মেসেজ হলে)
+            if(msg.sender !== currentUser.uid && msg.type !== 'call_log') {
+                // পেজ লোড হওয়ার সময় সাউন্ড যাতে না হয়, তার জন্য চেক
+                // কিন্তু রিয়েলটাইমে সাউন্ড হবে
             }
-
-            const cachedMsgs = localStorage.getItem(storageKey);
-            if (cachedMsgs) {
-                try {
-                    messagesContainer.innerHTML = ''; 
-                    const parsedMsgs = JSON.parse(cachedMsgs);
-                    parsedMsgs.forEach(item => { renderMessage(item.msg, item.key); currentChatMessages.push(item); });
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                } catch(e) {
-                    messagesContainer.innerHTML = ''; 
-                }
-            } else {
-                messagesContainer.innerHTML = ''; 
-            }
-
-            if (chatRef) chatRef.off();
-
-            chatRef.limitToLast(50).on('child_added', (snapshot) => {
-                const msg = snapshot.val();
-                const msgKey = snapshot.key;
-                if(msg.deletedFor && msg.deletedFor[currentUser.uid]) return; 
-
-                const existingEl = document.getElementById(`msg-${msgKey}`);
-                if (!existingEl) {
-                    renderMessage(msg, msgKey);
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    if(msg.sender !== currentUser.uid && msg.type !== 'call_log') playMsgSound();
-                }
-                
-                if (!currentChatMessages.some(m => m.key === msgKey)) {
-                     currentChatMessages.push({ key: msgKey, msg: msg });
-                     if (currentChatMessages.length > 50) currentChatMessages.shift();
-                     localStorage.setItem(storageKey, JSON.stringify(currentChatMessages));
-                }
-            });
-
-            chatRef.on('child_changed', (snapshot) => {
-                const msg = snapshot.val();
-                const msgKey = snapshot.key;
-                if (msg.deletedFor && msg.deletedFor[currentUser.uid]) {
-                    const el = document.getElementById(`msg-${msgKey}`);
-                    if (el) el.remove();
-                    currentChatMessages = currentChatMessages.filter(m => m.key !== msgKey);
-                    localStorage.setItem(storageKey, JSON.stringify(currentChatMessages));
-                    return;
-                }
-                const existingElement = document.getElementById(`msg-${msgKey}`);
-                if (existingElement) existingElement.remove();
-                renderMessage(msg, msgKey);
-                
-                const index = currentChatMessages.findIndex(m => m.key === msgKey);
-                if (index !== -1) currentChatMessages[index].msg = msg;
-                else currentChatMessages.push({ key: msgKey, msg: msg });
-                localStorage.setItem(storageKey, JSON.stringify(currentChatMessages));
-            });
-            
-            chatRef.on('child_removed', (snapshot) => {
-                const msgKey = snapshot.key;
-                const existingElement = document.getElementById(`msg-${msgKey}`);
-                if (existingElement) existingElement.remove();
-                currentChatMessages = currentChatMessages.filter(m => m.key !== msgKey);
-                localStorage.setItem(storageKey, JSON.stringify(currentChatMessages));
-            });
         }
+        
+        // লজিক: প্রথম আনসিন মেসেজ খুঁজে বের করা
+        if (msg.sender !== currentUser.uid && msg.status !== 'seen') {
+            if (!hasUnreadMessages) {
+                firstUnreadMessageId = msgKey; // প্রথম আনসিন মেসেজ আইডি সেভ করলাম
+                hasUnreadMessages = true;
+            }
+        }
+
+        // অ্যারেতে রাখা
+        if (!currentChatMessages.some(m => m.key === msgKey)) {
+             currentChatMessages.push({ key: msgKey, msg: msg });
+        }
+    });
+
+    // সব মেসেজ লোড হওয়ার পর একবার স্ক্রল পজিশন সেট করা
+    // যেহেতু child_added একটি একটি করে আসে, তাই আমরা একটু সময় দিবো
+    setTimeout(() => {
+        if (hasUnreadMessages && firstUnreadMessageId) {
+            // ১. যদি নতুন মেসেজ থাকে, তবে প্রথম আনসিন মেসেজে নিয়ে যাবে
+            const unreadEl = document.getElementById(`msg-${firstUnreadMessageId}`);
+            if (unreadEl) {
+                unreadEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                showToast("New messages above ☝️");
+            }
+        } else {
+            // ২. যদি সব সিন করা থাকে, তবে সবার নিচে নিয়ে যাবে
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        // ৩. মেসেজ সিন করা (Mark as Seen)
+        if (currentChatUser && currentChatUser.uid !== ADMIN_UID) {
+            markMessagesAsSeen(currentChatUser.uid);
+        }
+    }, 1000); // ১ সেকেন্ড অপেক্ষা করবে লোড হওয়ার জন্য
+
+    // অন্য ইভেন্ট হ্যান্ডলার (Changed/Removed)
+    chatRef.on('child_changed', (snapshot) => {
+        const msg = snapshot.val();
+        const msgKey = snapshot.key;
+        if (msg.deletedFor && msg.deletedFor[currentUser.uid]) {
+            const el = document.getElementById(`msg-${msgKey}`);
+            if (el) el.remove();
+            return;
+        }
+        const existingElement = document.getElementById(`msg-${msgKey}`);
+        if (existingElement) existingElement.remove();
+        renderMessage(msg, msgKey);
+    });
+    
+    chatRef.on('child_removed', (snapshot) => {
+        const msgKey = snapshot.key;
+        const existingElement = document.getElementById(`msg-${msgKey}`);
+        if (existingElement) existingElement.remove();
+    });
+}
 
         function renderMessage(msg, key) {
             const container = document.getElementById('chatMessages');
@@ -7485,52 +7642,56 @@ function openTikTokProfile(uid) {
     document.getElementById('ttInboxPage').style.display = 'none';
     document.getElementById('ttProfilePage').style.display = 'flex';
     
-    // বাটন কন্ট্রোল
     const actionContainer = document.getElementById('ttProfileActions');
     const uploadBtn = document.getElementById('ttFloatingUpload');
     const backBtn = document.getElementById('profileBackBtn');
 
+    // ডাটা লোড (নাম, ছবি, বায়ো, স্ট্যাটস)
+    database.ref('reels_users/'+uid).once('value', s => {
+        const u = s.val() || {name:'Unknown', profilePic:'', followers:0, following:0, likes:0};
+        
+        document.getElementById('ttProfileName').innerText = u.name;
+        document.getElementById('ttProfileTopName').innerText = u.name;
+        document.getElementById('ttProfileUsername').innerText = u.username || '@user';
+        document.getElementById('ttProfilePic').src = u.profilePic || 'https://ui-avatars.com/api/?name='+u.name;
+        document.getElementById('ttProfileBio').innerText = u.bio || 'No bio yet.';
+        
+        // স্ট্যাটস লোড
+        document.getElementById('ttStatsFollowers').innerText = u.followers || 0;
+        document.getElementById('ttStatsFollowing').innerText = u.following || 0;
+        document.getElementById('ttStatsLikes').innerText = u.likes || 0;
+    });
+
     if(uid === currentUser.uid) {
         // নিজের প্রোফাইল
-        uploadBtn.style.display = 'flex'; // (+) বাটন দেখাবে
-        backBtn.style.display = 'none';   // ব্যাক বাটন লুকাবে
-        
-        // এডিট বাটন নিশ্চিত করা
+        uploadBtn.style.display = 'flex';
+        backBtn.style.display = 'none';
         actionContainer.innerHTML = `<button class="tt-btn-edit" onclick="openEditReelsProfile()">Edit profile</button>`;
     } 
     else {
         // অন্যের প্রোফাইল
-        uploadBtn.style.display = 'none'; // (+) বাটন লুকাবে
-        backBtn.style.display = 'block';  // ব্যাক বাটন দেখাবে
+        uploadBtn.style.display = 'none';
+        backBtn.style.display = 'block';
         
-        // ফলো বাটন চেক
+        // ফলো বাটন চেক করা
         database.ref(`reels_follows/${currentUser.uid}/${uid}`).once('value', s => {
             if(s.exists()) {
+                // অলরেডি ফলো করা আছে -> Message বাটন দেখাবো
                 actionContainer.innerHTML = `
-                    <button class="tt-btn-edit" style="width:45%" onclick="messageUser('${uid}')">Message</button> 
-                    <button class="tt-btn-edit" style="width:45%" onclick="toggleFollow('${uid}', true)"><i class="fas fa-user-check"></i></button>
+                    <button class="tt-btn-edit" onclick="messageUser('${uid}')">Message</button> 
+                    <button class="tt-btn-edit" style="min-width: 50px;" onclick="toggleFollow('${uid}', true)">
+                        <i class="fas fa-user-check"></i>
+                    </button>
                 `;
             } else {
-                actionContainer.innerHTML = `<button class="tt-btn-follow" style="width:100%" onclick="toggleFollow('${uid}', false)">Follow</button>`;
+                // ফলো করা নেই -> Follow বাটন দেখাবো
+                actionContainer.innerHTML = `
+                    <button class="tt-btn-follow" onclick="toggleFollow('${uid}', false)">Follow</button>
+                `;
             }
         });
     }
 
-    // ডাটা লোড
-    database.ref('reels_users/'+uid).once('value', s => {
-        const u = s.val();
-        if(u) {
-            document.getElementById('ttProfileName').innerText = u.name;
-            document.getElementById('ttProfileTopName').innerText = u.name;
-            document.getElementById('ttProfileUsername').innerText = u.username;
-            document.getElementById('ttProfilePic').src = u.profilePic;
-            document.getElementById('ttProfileBio').innerText = u.bio || 'No bio yet.';
-            document.getElementById('ttStatsFollowers').innerText = u.followers || 0;
-            document.getElementById('ttStatsFollowing').innerText = u.following || 0;
-            document.getElementById('ttStatsLikes').innerText = u.likes || 0;
-        }
-    });
-    
     switchProfileTab('grid');
 }
 
@@ -7693,16 +7854,29 @@ function toggleReelLike(vidId, btn) {
     const span = btn.querySelector('span');
     let count = parseInt(span.innerText);
     
-    if(icon.style.color === 'white') {
-        icon.style.color = 'red'; count++;
-        database.ref(`reels_likes/${vidId}/${currentUser.uid}`).set(true);
-        database.ref(`reels_user_likes/${currentUser.uid}/${vidId}`).set(true);
-    } else {
-        icon.style.color = 'white'; count--;
+    // কালার চেক করে বুঝবো লাইক দেওয়া আছে নাকি নেই
+    if(icon.style.color === 'red') {
+        // যদি লাল থাকে, তার মানে লাইক দেওয়া আছে -> এখন UNLIKE হবে
+        icon.style.color = 'white'; 
+        count--;
+        if(count < 0) count = 0; // মাইনাস না হওয়ার জন্য সেফটি
+        
+        // ডাটাবেস থেকে লাইক রিমুভ
         database.ref(`reels_likes/${vidId}/${currentUser.uid}`).remove();
         database.ref(`reels_user_likes/${currentUser.uid}/${vidId}`).remove();
+    } else {
+        // যদি সাদা থাকে, তার মানে লাইক নেই -> এখন LIKE হবে
+        icon.style.color = 'red'; 
+        count++;
+        
+        // ডাটাবেসে লাইক অ্যাড
+        database.ref(`reels_likes/${vidId}/${currentUser.uid}`).set(true);
+        database.ref(`reels_user_likes/${currentUser.uid}/${vidId}`).set(true);
     }
+    
+    // সংখ্যা আপডেট করা
     span.innerText = count;
+    // মেইন ভিডিওর কাউন্ট আপডেট করা
     database.ref(`reels_videos/${vidId}/likesCount`).set(count);
 }
 
@@ -7803,16 +7977,49 @@ function loadRealInbox() {
 }
 
 function toggleFollow(targetUid, isUnfollow) {
+    const followersEl = document.getElementById('ttStatsFollowers');
+    let currentCount = parseInt(followersEl.innerText) || 0;
+    const actionContainer = document.getElementById('ttProfileActions');
+
     if(isUnfollow) {
+        // আনফলো লজিক
         database.ref(`reels_follows/${currentUser.uid}/${targetUid}`).remove();
         database.ref(`reels_followers/${targetUid}/${currentUser.uid}`).remove();
+        
+        // সংখ্যা কমানো (রিয়েলটাইম)
+        currentCount = currentCount > 0 ? currentCount - 1 : 0;
+        followersEl.innerText = currentCount;
+
+        // বাটন পরিবর্তন করে আবার লাল 'Follow' বাটন করা
+        actionContainer.innerHTML = `
+            <button class="tt-btn-follow" onclick="toggleFollow('${targetUid}', false)">Follow</button>
+        `;
+        
+        // ডাটাবেসে সংখ্যা আপডেট
+        database.ref(`reels_users/${targetUid}/followers`).set(currentCount);
         showToast("Unfollowed");
+
     } else {
+        // ফলো লজিক
         database.ref(`reels_follows/${currentUser.uid}/${targetUid}`).set(true);
         database.ref(`reels_followers/${targetUid}/${currentUser.uid}`).set(true);
+        
+        // সংখ্যা বাড়ানো (রিয়েলটাইম)
+        currentCount = currentCount + 1;
+        followersEl.innerText = currentCount;
+
+        // বাটন পরিবর্তন করে 'Message' ও 'Unfollow' বাটন করা
+        actionContainer.innerHTML = `
+            <button class="tt-btn-edit" onclick="messageUser('${targetUid}')">Message</button> 
+            <button class="tt-btn-edit" style="min-width: 50px;" onclick="toggleFollow('${targetUid}', true)">
+                <i class="fas fa-user-check"></i>
+            </button>
+        `;
+
+        // ডাটাবেসে সংখ্যা আপডেট
+        database.ref(`reels_users/${targetUid}/followers`).set(currentCount);
         showToast("Following");
     }
-    setTimeout(()=>openTikTokProfile(targetUid), 500);
 }
 
 function switchProfileTab(type) {
@@ -8174,55 +8381,60 @@ function renderReelItem(video, container) {
     database.ref('reels_users/' + video.userId).once('value', s => {
         const u = s.val() || {name:'Unknown', profilePic:'https://ui-avatars.com/api/?name=U'};
         
-        const div = document.createElement('div');
-        div.className = 'tt-video-item';
-        
-        // Media Content Logic
-        let mediaHtml = '';
-        if (video.type === 'image') {
-            mediaHtml = `
-                <img src="${video.videoUrl}" class="tt-video-player" style="object-fit:contain; background:#000;">
-                ${video.audioUrl ? `<audio src="${video.audioUrl}" autoplay loop></audio>` : ''}
-            `;
-        } else {
-            // FIX: added 'muted' attribute specifically for Native App/WebView compatibility
-            mediaHtml = `<video class="tt-video-player reel-video" loop playsinline muted src="${video.videoUrl}" onclick="togglePlayPause(this)"></video>`;
-        }
+        // চেক করা হচ্ছে আপনি এই ভিডিওতে আগে লাইক দিয়েছেন কিনা
+        database.ref(`reels_likes/${video.videoId}/${currentUser.uid}`).once('value', likeSnap => {
+            const isLiked = likeSnap.exists();
+            const heartColor = isLiked ? 'red' : 'white'; // লাইক থাকলে লাল, না থাকলে সাদা
 
-        let overlayHtml = video.textOverlay ? `<div class="reel-overlay-text">${video.textOverlay}</div>` : '';
-
-        div.innerHTML = `
-            ${mediaHtml}
-            ${overlayHtml}
+            const div = document.createElement('div');
+            div.className = 'tt-video-item';
             
-            <div class="tt-right-sidebar">
-                <div class="tt-profile-bubble" onclick="openTikTokProfile('${video.userId}')">
-                    <img src="${u.profilePic}">
-                    ${video.userId !== currentUser.uid ? '<div class="tt-plus-badge"><i class="fas fa-plus"></i></div>' : ''}
-                </div>
+            let mediaHtml = '';
+            if (video.type === 'image') {
+                mediaHtml = `
+                    <img src="${video.videoUrl}" class="tt-video-player" style="object-fit:contain; background:#000;">
+                    ${video.audioUrl ? `<audio src="${video.audioUrl}" autoplay loop></audio>` : ''}
+                `;
+            } else {
+                mediaHtml = `<video class="tt-video-player reel-video" loop playsinline muted src="${video.videoUrl}" onclick="togglePlayPause(this)"></video>`;
+            }
+
+            let overlayHtml = video.textOverlay ? `<div class="reel-overlay-text">${video.textOverlay}</div>` : '';
+
+            div.innerHTML = `
+                ${mediaHtml}
+                ${overlayHtml}
                 
-                <div class="tt-action-btn" onclick="toggleReelLike('${video.videoId}', this)">
-                    <i class="fas fa-heart tt-icon-bg" style="color:white"></i>
-                    <span class="tt-action-text">${video.likesCount || 0}</span>
-                </div>
-                
-                <div class="tt-action-btn" onclick="openComments('${video.videoId}')">
-                    <i class="fas fa-comment-dots tt-icon-bg"></i>
-                    <span class="tt-action-text">${video.commentCount || 0}</span>
+                <div class="tt-right-sidebar">
+                    <div class="tt-profile-bubble" onclick="openTikTokProfile('${video.userId}')">
+                        <img src="${u.profilePic}">
+                        ${video.userId !== currentUser.uid ? '<div class="tt-plus-badge"><i class="fas fa-plus"></i></div>' : ''}
+                    </div>
+                    
+                    <div class="tt-action-btn" onclick="toggleReelLike('${video.videoId}', this)">
+                        <!-- এখানে ডাইনামিক কালার বসানো হয়েছে -->
+                        <i class="fas fa-heart tt-icon-bg" style="color:${heartColor}"></i>
+                        <span class="tt-action-text">${video.likesCount || 0}</span>
+                    </div>
+                    
+                    <div class="tt-action-btn" onclick="openComments('${video.videoId}')">
+                        <i class="fas fa-comment-dots tt-icon-bg"></i>
+                        <span class="tt-action-text">${video.commentCount || 0}</span>
+                    </div>
+
+                    <div class="tt-action-btn" onclick="shareReel('${video.videoUrl}')">
+                        <i class="fas fa-share tt-icon-bg"></i>
+                        <span class="tt-action-text">Share</span>
+                    </div>
                 </div>
 
-                <div class="tt-action-btn" onclick="shareReel('${video.videoUrl}')">
-                    <i class="fas fa-share tt-icon-bg"></i>
-                    <span class="tt-action-text">Share</span>
+                <div class="tt-bottom-info">
+                    <span class="tt-username">${u.name}</span>
+                    <span class="tt-caption">${video.caption}</span>
                 </div>
-            </div>
-
-            <div class="tt-bottom-info">
-                <span class="tt-username">${u.name}</span>
-                <span class="tt-caption">${video.caption}</span>
-            </div>
-        `;
-        container.appendChild(div);
+            `;
+            container.appendChild(div);
+        });
     });
 }
 
