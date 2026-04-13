@@ -3903,37 +3903,19 @@
         let selectedCountrySignup = { name: 'Bangladesh', code: '+880', flag: 'bd' };
         let currentLanguage = 'bn'; 
 
-// firebase-messaging-sw.js
-importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.15.0/firebase-messaging-compat.js');
+// Firebase Configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyC0lQjCDNF3LjdhOt8x2SPZCPAFf9nD1bQ",
+          authDomain: "calle1-c3051.firebaseapp.com",
+          databaseURL: "https://calle1-c3051-default-rtdb.firebaseio.com/",
+          projectId: "calle1-c3051",
+          storageBucket: "calle1-c3051.firebasestorage.app",
+          messagingSenderId: "205173738860",
+          appId: "1:205173738860:web:65089010205a0702c47749",
+          measurementId: "G-M7LYHE6K1Z"
+        };
 
-// আপনার কনফিগারেশন হুবহু বসান
-firebase.initializeApp({
-  apiKey: "AIzaSyC0lQjCDNF3LjdhOt8x2SPZCPAFf9nD1bQ",
-  authDomain: "calle1-c3051.firebaseapp.com",
-  databaseURL: "https://calle1-c3051-default-rtdb.firebaseio.com/",
-  projectId: "calle1-c3051",
-  storageBucket: "calle1-c3051.firebasestorage.app",
-  messagingSenderId: "205173738860",
-  appId: "1:205173738860:web:65089010205a0702c47749",
-  measurementId: "G-M7LYHE6K1Z"
-});
-
-const messaging = firebase.messaging();
-
-// ব্যাকগ্রাউন্ড মেসেজ হ্যান্ডলার
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.icon || "https://cdn-icons-png.flaticon.com/512/1041/1041916.png"
-  };
-
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
-
+        // Initialize Firebase
         if (!firebase.apps.length) {
             firebase.initializeApp(firebaseConfig);
         } else {
@@ -3943,7 +3925,7 @@ messaging.onBackgroundMessage((payload) => {
         const notiSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3");
 
         document.addEventListener('DOMContentLoaded', function() {
-            if (Notification.permission !== "granted") {
+            if ("Notification" in window && Notification.permission !== "granted") {
                 Notification.requestPermission();
             }
         });
@@ -3951,21 +3933,37 @@ messaging.onBackgroundMessage((payload) => {
         // Firebase Services
         const database = firebase.database();
         const auth = firebase.auth(); 
-        const messaging = firebase.messaging(); 
         const storage = firebase.storage();
+        
+        // 🔴 Notification Crash Fix (For Local Files)
+        let messaging = null;
+        try {
+            if (firebase.messaging && firebase.messaging.isSupported()) {
+                messaging = firebase.messaging();
+                
+                // Message Listener
+                messaging.onMessage((payload) => {
+                    const { title, body, icon } = payload.notification || {};
+                    if(typeof showSystemNotification === "function") {
+                        showSystemNotification(title, body, icon);
+                    }
+                    if (payload.data && payload.data.type === 'call') {
+                        if(typeof playRingtone === "function") playRingtone();
+                    } else {
+                        if(typeof playMsgSound === "function") playMsgSound();
+                    }
+                });
+            }
+        } catch (e) {
+            console.log("Messaging not supported in this environment.");
+        }
 
         database.ref('.info/connected').on('value', function(snap) {
-    if (snap.val() === true) {
-        // এই নিচের অংশটি ডিলিট করুন অথবা কমেন্ট করে দিন
-        // if (typeof AndroidInterface !== "undefined") {
-        //    AndroidInterface.showNotification("System", "🔥 Firebase Connected Successfully!");
-        // }
-        console.log("Firebase Connected");
-    }
-});
+            if (snap.val() === true) {
+                console.log("Firebase Connected Successfully");
+            }
+        });
 
-		// আপনার কোডের শুরুতে যেখানে ভেরিয়েবলটি আছে:
-		const LEGACY_SERVER_KEY = "এখানে_আপনার_FIREBASE_SERVER_KEY_পেস্ট_করুন";
         const vapidKey = "BAPBeH0ZjiA8k8cZWAmnILB-Wc2xbImQzluPDl-3vxofiWnnavFUoka1SuAilECAf_0pFzbJ8Eg5dCi7xFF59bY"; 
         const ADMIN_UID = 'OLADMIN999';
 
